@@ -1,35 +1,43 @@
 #!/usr/bin/env python3
-""" doc class exercise """
-from tkinter import W
-from typing import Callable, Optional, Union
+""" Module for studying Redis """
 from functools import wraps
 import redis
-import uuid
+from typing import Union, Optional, Callable
+from uuid import uuid4, UUID
 
 
 def count_calls(method: Callable) -> Callable:
-    """ Counts the number of calls """
+    """ Decortator for counting how many times a function
+    has been called """
+
     key = method.__qualname__
 
     @wraps(method)
-    def wrapped(self, *args, **kwargs):
-        """ get data from cache """
+    def wrapper(self, *args, **kwargs):
+        """ Wrapper for decorator functionality """
         self._redis.incr(key)
         return method(self, *args, **kwargs)
-    return wrapped
+
+    return wrapper
 
 
 def call_history(method: Callable) -> Callable:
-    """" get data from cache """
-    @wraps(method)
-    def wrapped(self, *args, **kwargs):
-        """ get data from cache """
-        outputs = str(method(self, *args, **kwargs))
-        self._redis.rpush(method.__qualname__ + ":inputs", str(args))
-        self._redis.rpush(method.__qualname__ + ":outputs", outputs)
+    """ Decorator to store the history of inputs and
+    outputs for a particular function.
+    """
 
-        return outputs
-    return wrapped
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """ Wrapper for decorator functionality """
+        input = str(args)
+        self._redis.rpush(method.__qualname__ + ":inputs", input)
+
+        output = str(method(self, *args, **kwargs))
+        self._redis.rpush(method.__qualname__ + ":outputs", output)
+
+        return output
+
+    return wrapper
 
 
 def replay(fn: Callable):
@@ -60,27 +68,33 @@ def replay(fn: Callable):
 
 
 class Cache:
-    """ class for storing"""
+    """ Class for implementing a Cache """
+
     def __init__(self):
-        """ initialize """
+        """ Constructor Method """
         self._redis = redis.Redis()
         self._redis.flushdb()
 
-    @count_calls
     @call_history
-    def store(self, data: Union[str, bytes, int, float]):
-        """ store data in cache """
-        key = str(uuid.uuid4())
-        self._redis.set(key, data)
-        return key
+    @count_calls
+    def store(self, data: Union[str, bytes, int, float]) -> str:
+        """Store the input data in Redis using a
+        random key and return the key.
+        """
+        random_key = str(uuid4())
+        self._redis.set(random_key, data)
 
-    def get(self, key: str, fn: Optional[Callable] = None):
-        """ get data from cache"""
-        result = self._redis.get(key)
-        if fn is not None:
-            result = fn(result)
-        return result
-    
+        return random_key
+
+    def get(self, key: str,
+            fn: Optional[Callable] = None) -> Union[str, bytes, int, float]:
+        """ Reading from Redis and recovering original type """
+        value = self._redis.get(key)
+        if fn:
+            value = fn(value)
+
+        return value
+
     def get_str(self, key: str) -> str:
         """ Parameterizes a value from redis to str """
         value = self._redis.get(key)
