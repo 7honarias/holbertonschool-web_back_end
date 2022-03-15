@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""doc """
+""" doc class exercise """
 from tkinter import W
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 from functools import wraps
 import redis
 import uuid
 
+
 def count_calls(method: Callable) -> Callable:
-    """Counts the number of calls"""
+    """ Counts the number of calls """
     key = method.__qualname__
 
     @wraps(method)
@@ -67,9 +68,9 @@ class Cache:
 
     @count_calls
     @call_history
-    def store(self, data):
+    def store(self, data: Union[str, bytes, int, float]):
         """ store data in cache """
-        key = str(uuid.uuid1())
+        key = str(uuid.uuid4())
         self._redis.set(key, data)
         return key
 
