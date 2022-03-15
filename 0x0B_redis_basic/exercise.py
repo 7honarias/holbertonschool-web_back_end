@@ -22,6 +22,7 @@ def call_history(method: Callable) -> Callable:
     """" get data from cache """
     @wraps(method)
     def wrapped(self, *args, **kwargs):
+        """ get data from cache """
         outputs = str(method(self, *args, **kwargs))
         self._redis.rpush(method.__qualname__ + ":inputs", str(args))
         self._redis.rpush(method.__qualname__ + ":outputs", outputs)
